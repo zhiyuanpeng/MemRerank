@@ -5,7 +5,7 @@
 # Substitute only the placeholders listed for each prompt; do not apply str.format
 # blindly because Mem0 contains literal JSON braces.
 schema_version: 1
-source: "Original paper appendix (emnlp_industry.tex)"
+source: "Original paper appendix"
 prompts:
   mem0:
     description: "Mem0 prompt"
