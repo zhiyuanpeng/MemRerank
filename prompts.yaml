@@ -1,0 +1,181 @@
+# Complete prompts transcribed from the original paper source.
+# Only layout indentation/trailing whitespace is removed; LaTeX $\leq$ is rendered as ≤.
+# Role markers are preserved in text where the original specifies them.
+# The first three prompts do not specify chat roles in the paper.
+# Substitute only the placeholders listed for each prompt; do not apply str.format
+# blindly because Mem0 contains literal JSON braces.
+schema_version: 1
+source: "Original paper appendix (emnlp_industry.tex)"
+prompts:
+  mem0:
+    description: "Mem0 prompt"
+    source_label: "fig:mem0_prompt"
+    placeholders: []
+    text: |-
+      You are a memory extraction system for personalized recommendation.
+
+      You will receive individual purchase items from a user's shopping history, one at a time.
+      Each item may include:
+      - Category information (e.g., [Electronics])
+      - Product metadata (title, description, features)
+      - Optional user review text
+
+      Your task:
+      Extract the most important shopping preferences or decision drivers from each purchase item that may help future purchase decisions.
+
+      Rules:
+      - Only extract what is directly supported by the input
+      - Create atomic, generalizable statements useful for future recommendations
+      - Avoid copying long descriptions; abstract into preference facts
+      - Skip product IDs, order details, timestamps
+      - Update or consolidate memories as you see patterns across multiple items
+      - Return at most 3 most important preference facts
+      - If nothing meaningful can be extracted, return empty list
+
+      Output format:
+      You MUST return ONLY raw JSON without any markdown formatting, code blocks, or extra text.
+      Format: {"facts": ["preference 1", "preference 2", ...]}
+
+      Do NOT wrap the JSON in ```json or ``` markers.
+      Do NOT add any explanation before or after the JSON.
+
+      Example valid output:
+      {"facts": ["User prefers wireless headphones", "User values noise cancellation features"]}
+  mr_rec_preference_patterns:
+    description: "MR.Rec Preference Patterns Extraction Prompt"
+    source_label: "fig:mr.rec_pp_prompt"
+    placeholders: ["category", "meta_reviews"]
+    text: |-
+      You are given the following information about a user's purchase history in a specific category:
+
+      - Category: {category}
+      - User's purchased items in this category, each with its metadata and the user's review:
+        {meta_reviews}
+
+      Your task:
+      Analyze the items (including their metadata and the user's reviews) and summarize the user's preferences in this category.
+      The summary should capture consistent patterns across items and reviews (e.g., favored brands, preferred price range, styles, features, quality expectations).
+      Be as detailed as possible, but do not fabricate information that is not supported by the input.
+
+      Directly output the preference summary (string) below:
+  mr_rec_user_profile:
+    description: "MR.Rec User Profile Extraction Prompt"
+    source_label: "fig:mr.rec_up_prompt"
+    placeholders: ["preference_patterns"]
+    text: |-
+      You are given the following information about a user's preferences across different categories or aspects:
+      {preference_patterns}
+
+      Your task:
+      Based on these preferences, infer the user's overall profile.
+      The profile should summarize general traits, patterns, and tendencies that can be reasonably inferred from the given preferences
+      (e.g., spending habits, brand inclination, style choices, feature priorities, quality expectations, lifestyle hints).
+      Do not fabricate information that is not supported by the input.
+
+      Directly output the profile (string) below:
+  query_rewrite:
+    description: "Query Rewrite Prompt"
+    source_label: "fig:query_rewrite_prompt"
+    placeholders: ["query"]
+    text: |-
+      system:
+      Rewrite the "Original Query" into a single, casual, conversational query. Rules:
+      - Keep: 1 core item + 1 core use case (e.g., "a laptop for gaming").
+      - Delete: All other details (including brand, specs, price, personal preferences, etc.).
+      - Tone: Natural and conversational.
+      - Format: Must be a single sentence.
+      user:
+      Original Query: {query}
+      Rewritten Query:
+  reranking_with_memory:
+    description: "Reranking Prompt with Memory"
+    source_label: "fig:v1_mem"
+    placeholders: ["query", "category_name", "within_memory", "cross_memory", "passages"]
+    text: |-
+      system:
+      You are an intelligent shopping assistant specialized in selecting the most relevant product from a list of candidates based on a customer's search query.
+      user:
+      Given a customer search query "{query}", which of the following products is the most relevant to the query?
+
+      Below is user preference memory that has been precomputed from the user's historical behavior.
+      Some memory blocks may be empty or omitted; if a block is not present, you should simply ignore it.
+
+      WITHIN-CATEGORY PREFERENCE MEMORY (optional, may be based on M, R, or M+R)
+      Category: {category_name}
+      ------------------------------
+      {within_memory}
+
+      CROSS-CATEGORY PREFERENCE MEMORY (optional, may be based on M, R, or M+R)
+      ------------------------------
+      {cross_memory}
+
+      Candidate products:
+      {passages}
+
+      When choosing the most relevant product:
+      - First, make sure the product matches the customer's query.
+      - If preference memory is provided:
+        * Use the within-category memory (if present) to judge how well each candidate aligns with the user's stable preferences for this type of product.
+        * Use the cross-category memory (if present) to ensure the choice fits the user's general shopping style (e.g., budget, quality expectations, brand preferences) and to break ties.
+      - However, the query relevance must remain the primary criterion.
+
+      Output ONLY the product label (e.g., A, B, C) of the most relevant product wrapped in <answer> tags, like <answer>A</answer>. Do not output any other text.
+  within_category_memory_m_w:
+    description: "Within-category Shopping Preference Memory Extraction Prompt (M_W)"
+    source_label: "fig:M_W"
+    placeholders: ["category_name", "within_M_history"]
+    text: |-
+      system:
+      You are a user preference memory extractor for an e-commerce recommendation system.
+      Your goal is to summarize a user's stable preferences for ONE product category
+      based ONLY on metadata (M) of their past purchases in that category.
+
+      Definition:
+      - M (meta-data) = product TITLE + product DESCRIPTION.
+
+      The summary must be independent of any specific search query, so it can be reused
+      for future tasks for the same user.
+
+      user:
+      Below is this user's purchase history in category "{category_name}".
+
+      Each entry contains:
+      - [M]: product metadata (TITLE + DESCRIPTION)
+
+      ==============================
+      WITHIN-CATEGORY HISTORY (META ONLY)
+      Category: {category_name}
+      ------------------------------
+      {within_M_history}
+      ==============================
+
+      Using ONLY the provided metadata (M) for these past purchases:
+      - Infer the user's stable preferences specifically for category "{category_name}".
+      - Discover 3-6 aspects that are most strongly supported by the purchase history and most useful for distinguishing this user's preferences in this category.
+      - The aspect names are NOT fixed. You may include common aspects (e.g., typical brands, feature priorities, style/aesthetics, quality level, price range or budget level, common usage scenarios), but these are examples-not a required checklist. Do NOT output an aspect unless it is clearly evidenced in the history.
+      - Avoid generic headings like "features" or "style" unless you specify what features/style (e.g., "noise cancelling", "USB-C", "wireless", "minimalist design").
+      - Each bullet MUST include an Evidence field:
+          * Evidence must be copied verbatim from the provided purchase history metadata (TITLE/DESCRIPTION fragments).
+          * Provide 1-2 short evidence snippets, each ≤ 10 words.
+          * Format Evidence as a JSON-like list of quoted snippets: ["snippet1"] or ["snippet1", "snippet2"].
+      - Make each Preference actionable for ranking products in "{category_name}" (state what to prefer/avoid).
+      - Keep the memory concise:
+          * Output 3-6 bullets total (output fewer if evidence is weak; do NOT pad).
+          * Each bullet must be a single line.
+          * Each Preference should be ≤ 20 words.
+      - Do NOT repeat the same aspect name across bullets. Use short aspect labels (2-4 words) and avoid near-duplicates (e.g., "Brand" vs "Brands").
+      - If the history does not strongly support an aspect, omit it rather than guessing.
+      - If evidenced, you may also include aspects like compatibility/ecosystem, portability/travel, durability/warranty, or bundle/kit preferences.
+
+      The memory must be query-independent: describe what the user generally likes
+      or dislikes in this category, not what they might want in a single session.
+
+      Output your summary in the following format:
+
+      <within_memory>
+      - Aspect: <aspect_1>; Preference: <user's preference for this aspect>; Evidence: ["<snippet1>", "<snippet2>"]
+      - Aspect: <aspect_2>; Preference: <user's preference for this aspect>; Evidence: ["<snippet1>"]
+      ...
+      </within_memory>
+
+      Do NOT output anything outside the <within_memory> tags.
