@@ -1,21 +1,5 @@
----
-datasets:
-- data-for-review
-language:
-- en
-license: cc-by-4.0
-task_categories:
-- text-retrieval
-- text-ranking
-tags:
-- amazon-c4
-- e-commerce
-- user-history
-- reranking
-- personalization
----
-
 # Amazon-C4 User Purchase History Dataset
+[![Hugging Face Dataset](https://img.shields.io/badge/🤗%20Hugging%20Face-Dataset-yellow)](https://huggingface.co/datasets/zhiyuanpeng/amazon-c4-user-purchase-history)
 
 A large-scale dataset of user purchase histories paired with e-commerce search queries, designed for personalized product reranking research. This release contains user purchase histories organized by product category and synchronized with Amazon-C4 queries.
 
